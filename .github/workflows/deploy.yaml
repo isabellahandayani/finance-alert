@@ -1,4 +1,4 @@
-name: Deploy All Functions
+name: Deploy
 
 on:
   push:
@@ -13,6 +13,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       PROJECT_ID: ${{ secrets.PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v3
@@ -21,16 +22,17 @@ jobs:
         with:
           version: latest
 
+      - name: Migrate database
+        run: |
+          supabase link --project-ref $PROJECT_ID
+          supabase db push
+
       - name: Deploy all functions
         run: |
           # Iterate over all function directories and deploy
-          for dir in $(find supabase/functions -mindepth 1 -maxdepth 1 -type d); do
-            # Skip directories starting with "_"
-            if [[ $(basename $dir) == _* ]]; then
-              echo "Skipping function: $(basename $dir)"
-              continue
+          for dir in supabase/functions/*/; do
+            if [[ "$(basename $dir)" != _* ]]; then
+              echo "Deploying function: $(basename $dir)"
+              supabase functions deploy $(basename $dir) --project-ref $PROJECT_ID
             fi
-            function_name=$(basename $dir)
-            echo "Deploying function: $function_name"
-            supabase functions deploy $function_name --project-ref $PROJECT_ID
           done
