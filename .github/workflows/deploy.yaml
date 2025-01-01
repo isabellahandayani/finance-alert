@@ -1,6 +1,9 @@
 name: Deploy All Functions
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -21,7 +24,12 @@ jobs:
       - name: Deploy all functions
         run: |
           # Iterate over all function directories and deploy
-          for dir in $(find supabase/functions -mindepth 1 -maxdepth 1 -type d); do
+          for dir in $(find supabase/functions -type d); do
+            # Skip directories starting with "_"
+            if [[ $(basename $dir) == _* ]]; then
+              echo "Skipping function: $(basename $dir)"
+              continue
+            fi
             function_name=$(basename $dir)
             echo "Deploying function: $function_name"
             supabase functions deploy $function_name --project-ref $PROJECT_ID
