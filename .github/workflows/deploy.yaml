@@ -24,7 +24,7 @@ jobs:
       - name: Deploy all functions
         run: |
           # Iterate over all function directories and deploy
-          for dir in $(find supabase/functions -type d); do
+          for dir in $(find supabase/functions -mindepth 1 -maxdepth 1 -type d); do
             # Skip directories starting with "_"
             if [[ $(basename $dir) == _* ]]; then
               echo "Skipping function: $(basename $dir)"
