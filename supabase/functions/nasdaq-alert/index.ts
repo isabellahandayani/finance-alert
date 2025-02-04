@@ -5,7 +5,7 @@ import { supabaseClient } from "../_shared/supabaseClient.ts";
 
 async function getStockRate(nickname: string): Promise<number | null> {
   try {
-    const url = `https://www.google.com/finance/quote/${nickname}:IDX`;
+    const url = `https://www.google.com/finance/quote/${nickname}:NASDAQ`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -40,9 +40,10 @@ serve(async (req) => {
   // Fetch control table data from Supabase
   const { data, error } = await supabaseClient
     .from("control_table")
-    .select("nickname, value")
-    .eq("group_id", "StockThreshold");
+    .select("nickname, min_threshold, max_threshold")
+    .eq("group_id", "NasdaqThreshold");
 
+  console.log(data);
   if (error) {
     console.error("Error fetching data from Supabase:", error);
     return new Response("Error fetching data from Supabase", { status: 500 });
@@ -54,20 +55,15 @@ serve(async (req) => {
   }
 
   for (const stock of data) {
-    const stockThreshold = parseFloat(
-      stock.value.replace(/[^\d.-]/g, "").replace(",", "")
-    );
-    if (isNaN(stockThreshold)) {
-      console.error(`Invalid threshold for ${stock.nickname}: ${stock.value}`);
-      continue;
-    }
-
-    const parsedRate = await getStockRate(stock.nickname);
+    var parsedRate = await getStockRate(stock.nickname);
     if (!parsedRate) {
       continue;
     }
 
-    if (parsedRate <= stockThreshold) {
+    if (
+      parsedRate <= stock.min_threshold ||
+      parsedRate >= stock.max_threshold
+    ) {
       console.log(
         `ALERT: ${stock.nickname} rate is below threshold: ${parsedRate}`
       );
@@ -77,7 +73,7 @@ serve(async (req) => {
 
   if (ratesAboveThreshold.length > 0) {
     const discordPayload = {
-      content: "Stock rates above threshold alert @everyone:",
+      content: "Stock rates threshold alert @everyone:",
       embeds: ratesAboveThreshold.map(({ stock, rate }) => ({
         title: `Stock: ${stock}`,
         description: `Rate: ${rate}`,

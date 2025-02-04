@@ -3,9 +3,9 @@ import cheerio from "https://esm.sh/cheerio@1.0.0-rc.12";
 import { sendDiscordMessage } from "../_shared/discordClient.ts";
 import { supabaseClient } from "../_shared/supabaseClient.ts";
 
-async function getCurrencyRate(nickname: string): Promise<number | null> {
+async function getStockRate(nickname: string): Promise<number | null> {
   try {
-    const url = `https://www.google.com/finance/quote/${nickname}-IDR`;
+    const url = `https://www.google.com/finance/quote/${nickname}:IDX`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -35,12 +35,13 @@ async function getCurrencyRate(nickname: string): Promise<number | null> {
 }
 
 serve(async (req) => {
-  const exchangeRatesAboveThreshold = [];
+  const ratesAboveThreshold = [];
 
+  // Fetch control table data from Supabase
   const { data, error } = await supabaseClient
     .from("control_table")
     .select("nickname, min_threshold, max_threshold")
-    .eq("group_id", "CurrencyThreshold");
+    .eq("group_id", "IdxThreshold");
 
   if (error) {
     console.error("Error fetching data from Supabase:", error);
@@ -49,34 +50,31 @@ serve(async (req) => {
 
   if (!data || data.length === 0) {
     console.log("No data found in control table.");
-    return new Response("No currencies to process.", { status: 200 });
+    return new Response("No stocks to process.", { status: 200 });
   }
 
-  for (const currency of data) {
-    const parsedRate = await getCurrencyRate(currency.nickname);
+  for (const stock of data) {
+    const parsedRate = await getStockRate(stock.nickname);
     if (!parsedRate) {
       continue;
     }
 
     if (
-      parsedRate <= currency.min_threshold ||
-      parsedRate >= currency.max_threshold
+      parsedRate <= stock.min_threshold ||
+      parsedRate >= stock.max_threshold
     ) {
       console.log(
-        `ALERT: ${currency.nickname} rate is below threshold: ${parsedRate}`
+        `ALERT: ${stock.nickname} rate is below threshold: ${parsedRate}`
       );
-      exchangeRatesAboveThreshold.push({
-        currency: currency.nickname,
-        rate: parsedRate,
-      });
+      ratesAboveThreshold.push({ stock: stock.nickname, rate: parsedRate });
     }
   }
 
-  if (exchangeRatesAboveThreshold.length) {
+  if (ratesAboveThreshold.length > 0) {
     const discordPayload = {
-      content: "Currency rates threshold alert @everyone:",
-      embeds: exchangeRatesAboveThreshold.map(({ currency, rate }) => ({
-        title: `Currency: ${currency}`,
+      content: "Stock rates threshold alert @everyone:",
+      embeds: ratesAboveThreshold.map(({ stock, rate }) => ({
+        title: `Stock: ${stock}`,
         description: `Rate: ${rate}`,
         color: 16711680,
       })),
@@ -85,7 +83,7 @@ serve(async (req) => {
     await sendDiscordMessage(discordPayload);
   }
 
-  return new Response(JSON.stringify({ exchangeRatesAboveThreshold }), {
+  return new Response(JSON.stringify({ ratesAboveThreshold }, null, 2), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
