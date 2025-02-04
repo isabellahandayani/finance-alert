@@ -5,7 +5,7 @@ import { supabaseClient } from "../_shared/supabaseClient.ts";
 
 async function getStockRate(nickname: string): Promise<number | null> {
   try {
-    const url = `https://www.google.com/finance/quote/${nickname}:NASDAQ`;
+    const url = `https://www.google.com/finance/quote/${nickname}:NYSEARCA`;
     const res = await fetch(url, {
       headers: {
         "User-Agent":
@@ -41,7 +41,7 @@ serve(async (req) => {
   const { data, error } = await supabaseClient
     .from("control_table")
     .select("nickname, min_threshold, max_threshold")
-    .eq("group_id", "NasdaqThreshold");
+    .eq("group_id", "ETFThreshold");
 
   if (error) {
     console.error("Error fetching data from Supabase:", error);

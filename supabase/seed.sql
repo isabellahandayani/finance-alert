@@ -6,4 +6,5 @@ values
 ('IdxThreshold', 'BBCA', 9000, 10000),
 ('IdxThreshold', 'BBRI', 3900, 5000),
 ('IdxThreshold', 'BBNI', 4000, 5000),
-('IdxThreshold', 'NISP', 1300, 2000)
+('IdxThreshold', 'NISP', 1300, 2000),
+('ETFThreshold', 'SPY', 590, 600)
